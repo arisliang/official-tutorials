@@ -63,3 +63,37 @@ def load_data(batch_size, resize=None):
     test_data = gluon.data.DataLoader(mnist_test, batch_size, shuffle=False)
 
     return train_data, test_data
+
+
+def train(net, train_data, test_data, ctx, batch_size, learning_rate):
+    # 训练
+    import time
+    from mxnet import gluon
+
+    softmax_cross_entropy = gluon.loss.SoftmaxCrossEntropyLoss()
+
+    trainable_params = net.collect_params()
+#     print(trainable_params)
+
+    trainer = gluon.Trainer(trainable_params, 'sgd', {
+        'learning_rate': learning_rate
+    })
+
+    for epoch in range(10):
+        time_start = time.time()
+        train_loss = 0.
+        train_acc = 0.
+        for data, label in train_data:
+            label = label.as_in_context(ctx)
+            with autograd.record():
+                output = net(data.as_in_context(ctx))
+                loss = softmax_cross_entropy(output, label)
+            loss.backward()
+            trainer.step(batch_size)
+
+            train_loss += nd.mean(loss).asscalar()
+            train_acc += utils.accuracy(output, label)
+        test_acc = utils.evaluate_accuracy(test_data, net, ctx)
+        print("Epoch %d. Loss: %.4f, Train acc %.4f, Test acc %.4f, Time %.0f sec" % (
+            epoch, train_loss / len(train_data),
+            train_acc / len(train_data), test_acc, time.time() - time_start))

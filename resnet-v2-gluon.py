@@ -4,6 +4,7 @@
 from mxnet.gluon import nn
 from mxnet import nd
 from utils import *
+from mxnet import autograd
 
 
 class _Residual(nn.Block):
@@ -32,7 +33,7 @@ class ResidualIdentity(_Residual):
         out = self.conv1(nd.relu(self.bn1(x)))
         #         print('out.shape:', out.shape)
 
-        out = self.conv2(nd.relu(self.bn2(x)))
+        out = self.conv2(nd.relu(self.bn2(out)))
         #         print('out.shape:', out.shape)
 
         if not self.same_shape:
@@ -41,11 +42,12 @@ class ResidualIdentity(_Residual):
 
         return out + x
 
+
 # 输入输出通道相同
 blk = ResidualIdentity(3)
 blk.initialize()
 
-x = nd.random.uniform(shape=(4,3,96,96))
+x = nd.random.uniform(shape=(4, 3, 96, 96))
 y = blk(x)
 print('y.shape:', y.shape)
 print(blk)
@@ -55,7 +57,7 @@ blk2 = ResidualIdentity(8, same_shape=False)
 blk2.initialize()
 # print(blk2)
 y2 = blk2(x)
-print('y2.shape:',y2.shape)
+print('y2.shape:', y2.shape)
 print(blk2)
 
 
@@ -165,12 +167,15 @@ class ResNet18(nn.Block):
                 print('Block %d output: %s' % (i + 1, out.shape))
         return out
 
+
 model = ResNet18(10, verbose=True)
 model.initialize()
 
-x = nd.random.uniform(shape=(4,3,96, 96))
-y = model(x)
-print(model)
+x = nd.random.uniform(shape=(4, 3, 96, 96))
+with autograd.record():
+    y = model(x)
+    print(model)
+y.backward()
 
 batch_size = 128
 train_data, test_data = utils.load_data(batch_size, resize=224)
@@ -180,37 +185,4 @@ model = ResNet18(10, verbose=False)
 model.initialize(ctx=ctx, init=init.Xavier())
 
 # 训练
-import time
-from mxnet import gluon
-
-softmax_cross_entropy = gluon.loss.SoftmaxCrossEntropyLoss()
-
-trainable_params = model.collect_params()
-print(trainable_params)
-
-trainer = gluon.Trainer(trainable_params, 'sgd', {
-    'learning_rate': 0.05
-})
-
-for epoch in range(10):
-    time_start = time.time()
-    train_loss = 0.
-    train_acc = 0.
-    for data, label in train_data:
-        label = label.as_in_context(ctx)
-        with autograd.record():
-            output = model(data.as_in_context(ctx))
-            loss = softmax_cross_entropy(output, label)
-
-        # b1_params = model.net[0]
-        # print(b1_params)
-
-        loss.backward()
-        trainer.step(batch_size)
-
-        train_loss += nd.mean(loss).asscalar()
-        train_acc += utils.accuracy(output, label)
-    test_acc = utils.evaluate_accuracy(test_data, model, ctx)
-    print("Epoch %d. Loss: %.4f, Train acc %.4f, Test acc %.4f, Time %.0f sec" % (
-        epoch, train_loss / len(train_data),
-        train_acc / len(train_data), test_acc, time.time() - time_start))
+train(model, train_data=train_data, test_data=test_data, ctx=ctx, batch_size=batch_size)
