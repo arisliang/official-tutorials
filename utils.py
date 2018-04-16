@@ -24,6 +24,7 @@ def try_gpu(gpu_id=0):
     try:
         ctx = mx.gpu(gpu_id)
         _ = nd.array([0], ctx=ctx)
-    except:
+    except Exception as err:
+        print(err)
         ctx = mx.cpu()
     return ctx
