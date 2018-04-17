@@ -65,7 +65,8 @@ def load_data(batch_size, resize=None):
     return train_data, test_data
 
 
-def train(net, train_data, test_data, ctx, batch_size, learning_rate):
+def train(net, train_data, test_data, ctx, batch_size, learning_rate,
+          num_epochs=10):
     # 训练
     import time
     from mxnet import gluon
@@ -79,7 +80,7 @@ def train(net, train_data, test_data, ctx, batch_size, learning_rate):
         'learning_rate': learning_rate
     })
 
-    for epoch in range(10):
+    for epoch in range(num_epochs):
         time_start = time.time()
         train_loss = 0.
         train_acc = 0.
