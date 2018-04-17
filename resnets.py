@@ -91,7 +91,9 @@ class ResidualIdentityBottleneck(_ResidualBottleneck):
     
 # 构建ResNet
 class _ResNet(nn.Block):
-    def __init__(self, version=2):
+    def __init__(self, version=2, **kwargs):
+        super(_ResNet, self).__init__(**kwargs)
+        self.version = version
         if version == 1:
             Residual = _Residual
             ResidualBottleneck = _ResidualBottleneck
